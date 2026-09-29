@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Куплю — агентство недвижимости</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+  /* ============ БАЗА ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --primary: #2563eb; --primary-dark: #1e40af; --accent: #f59e0b;
+    --dark: #0f172a; --gray: #64748b; --light: #f1f5f9; --white: #ffffff;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08); --radius: 12px;
+    --danger: #dc2626; --success: #16a34a;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    color: var(--dark); background: var(--white); line-height: 1.6;
+    overflow-x: hidden;
+  }
+  body.no-scroll { overflow: hidden; position: fixed; width: 100%; }
+  a { color: inherit; text-decoration: none; }
+  button { cursor: pointer; border: none; font-family: inherit; }
+
+  /* ============ ШАПКА ============ */
+  header {
+    position: sticky; top: 0; z-index: 500;
+    background: var(--white); box-shadow: var(--shadow);
+    padding-top: var(--safe-top);
+  }
+  .nav {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; gap: 16px;
+  }
+  .logo { font-size: 24px; font-weight: 800; color: var(--primary); }
+  .logo span { color: var(--accent); }
+  .nav-links { display: flex; gap: 24px; }
+  .nav-links a { font-weight: 500; transition: color .2s; }
+  .nav-links a:hover { color: var(--primary); }
+  .nav-actions { display: flex; align-items: center; gap: 10px; }
+
+  /* Кнопки */
+  .btn-login {
+    background: var(--primary); color: var(--white);
+    padding: 12px 20px; border-radius: 8px;
+    font-weight: 600; min-height: 44px;
+    transition: background .2s;
+  }
+  .btn-login:hover { background: var(--primary-dark); }
+  .btn-user {
+    background: var(--light); color: var(--dark);
+    padding: 8px 14px; border-radius: 8px;
+    font-weight: 600; display: flex; align-items: center; gap: 8px;
+    min-height: 44px;
+  }
+  .user-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--primary); color: var(--white);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .btn-logout {
+    background: transparent; color: var(--gray);
+    font-size: 20px; padding: 8px 10px; border-radius: 6px;
+    min-width: 44px; min-height: 44px;
+  }
+  .btn-logout:hover { color: var(--danger); background: #fee2e2; }
+
+  /* Бургер */
+  .burger {
+    display: none; background: var(--light); color: var(--dark);
+    width: 44px; height: 44px; border-radius: 8px;
+    font-size: 22px; align-items: center; justify-content: center;
+  }
+  .burger:active { background: #e2e8f0; }
+
+  /* ============ МОБИЛЬНОЕ МЕНЮ ============ */
+  .mobile-menu-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,23,42,0.5); z-index: 900;
+    opacity: 0; transition: opacity .25s;
+    backdrop-filter: blur(2px);
+  }
+  .mobile-menu-overlay.active { opacity: 1; }
+
+  .mobile-menu {
+    position: fixed; top: 0; right: -100%;
+    width: 82%; max-width: 340px; height: 100vh;
+    background: var(--white); z-index: 950;
+    transition: right .3s ease;
+    display: flex; flex-direction: column;
+    padding: calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom));
+    overflow-y: auto;
+    box-shadow: -8px 0 30px rgba(0,0,0,0.15);
+  }
+  .mobile-menu.open { right: 0; }
+
+  .mobile-menu-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 20px; border-bottom: 1px solid #e2e8f0; margin-bottom: 20px;
+  }
+  .mobile-menu-close {
+    background: var(--light); width: 44px; height: 44px;
+    border-radius: 8px; font-size: 20px; color: var(--dark);
+  }
+  .mobile-menu-close:active { background: #e2e8f0; }
+
+  .mobile-menu nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .mobile-menu nav a {
+    padding: 16px; font-size: 17px; font-weight: 600;
+    border-radius: 10px; transition: background .2s;
+    display: flex; align-items: center; gap: 12px;
+    min-height: 52px;
+  }
+  .mobile-menu nav a:active { background: var(--light); }
+
+  .mobile-menu-footer {
+    padding-top: 20px; border-top: 1px solid #e2e8f0;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .mobile-menu-footer .btn-login,
+  .mobile-menu-footer .btn-user {
+    justify-content: center; width: 100%;
+  }
+  .mobile-menu-footer .btn-logout-mobile {
+    background: var(--light); color: var(--danger);
+    padding: 14px; border-radius: 10px; font-weight: 600;
+    min-height: 48px; width: 100%;
+  }
+
+  /* ============ HERO ============ */
+  .hero {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    color: var(--white); padding: 60px 20px 80px;
+    text-align: center;
+  }
+  .hero h1 { font-size: 40px; margin-bottom: 14px; font-weight: 800; line-height: 1.15; }
+  .hero p { font-size: 17px; max-width: 640px; margin: 0 auto; opacity: .92; }
+
+  /* ============ ПОИСК ============ */
+  .search-box {
+    max-width: 1000px; margin: -50px auto 0;
+    background: var(--white); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 20px;
+    position: relative; z-index: 10;
+    margin-left: 16px; margin-right: 16px;
+  }
+  .search-tabs {
+    display: flex; gap: 8px; margin-bottom: 18px;
+    overflow-x: auto; overflow-y: hidden;
+    scrollbar-width: none; -ms-overflow-style: none;
+    padding-bottom: 4px; margin-left: -4px; margin-right: -4px;
+    padding-left: 4px; padding-right: 4px;
+  }
+  .search-tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 12px 18px; border-radius: 8px;
+    background: var(--light); font-weight: 600; color: var(--gray);
+    transition: all .2s; white-space: nowrap;
+    min-height: 44px; flex-shrink: 0;
+  }
+  .tab.active { background: var(--primary); color: var(--white); }
+
+  .search-fields {
+    display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr auto; gap: 12px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 12px; color: var(--gray);
+    font-weight: 600; text-transform: uppercase;
+  }
+  .field input, .field select {
+    padding: 12px 14px; border: 2px solid #e2e8f0;
+    border-radius: 8px; font-size: 16px; font-family: inherit;
+    background: var(--white); min-height: 48px;
+    transition: border-color .2s;
+  }
+  .field input:focus, .field select:focus {
+    outline: none; border-color: var(--primary);
+  }
+  .btn-search {
+    background: var(--primary); color: var(--white);
+    padding: 14px 24px; border-radius: 8px;
+    font-weight: 700; font-size: 15px;
+    align-self: end; min-height: 48px;
+    transition: background .2s;
+  }
+  .btn-search:active { background: var(--primary-dark); }
+
+  /* ============ СЕКЦИИ ============ */
+  section { padding: 60px 20px; }
+  .container { max-width: 1200px; margin: 0 auto; }
+  .section-title { text-align: center; margin-bottom: 32px; }
+  .section-title h2 { font-size: 28px; margin-bottom: 8px; }
+  .section-title p { color: var(--gray); font-size: 15px; }
+
+  /* ============ КАТАЛОГ ============ */
+  .catalog-controls {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+  }
+  .results-count { color: var(--gray); font-weight: 500; font-size: 14px; }
+  .sort-select {
+    padding: 10px 14px; border: 2px solid #e2e8f0;
+    border-radius: 8px; font-family: inherit; font-size: 14px;
+    background: var(--white); min-height: 44px;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: var(--white); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+    transition: transform .25s, box-shadow .25s;
+    display: flex; flex-direction: column; position: relative;
+  }
+  .card:active { transform: scale(0.98); }
+  .card-img {
+    height: 200px; position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 60px; cursor: pointer;
+  }
+  .badge {
+    position: absolute; top: 12px; left: 12px;
+    background: var(--accent); color: var(--white);
+    padding: 5px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 700; z-index: 2;
+  }
+  .fav-btn {
+    position: absolute; top: 10px; right: 10px; z-index: 3;
+    background: rgba(255,255,255,0.95); border-radius: 50%;
+    width: 44px; height: 44px; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .2s;
+  }
+  .fav-btn:active { transform: scale(0.9); }
+  .fav-btn.active { color: var(--danger); }
+  .card-body { padding: 18px; flex: 1; display: flex; flex-direction: column; }
+  .card-price {
+    font-size: 20px; font-weight: 800; color: var(--primary);
+    margin-bottom: 4px;
+  }
+  .card-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .card-address { color: var(--gray); font-size: 14px; margin-bottom: 12px; }
+  .card-features {
+    display: flex; gap: 14px; font-size: 13px; color: var(--gray);
+    padding-top: 12px; border-top: 1px solid #e2e8f0; margin-top: auto;
+    flex-wrap: wrap;
+  }
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--gray); grid-column: 1 / -1;
+  }
+
+  /* ============ КАРТА ============ */
+  .map-section { background: var(--light); }
+  .map-wrap {
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow); height: 520px; position: relative;
+  }
+  #map { width: 100%; height: 100%; }
+  .map-hint {
+    position: absolute; bottom: 16px; left: 16px; right: 16px; z-index: 400;
+    background: var(--white); padding: 10px 14px;
+    border-radius: 8px; box-shadow: var(--shadow);
+    font-size: 12px; color: var(--gray);
+    text-align: center;
+  }
+  .leaflet-control-attribution { font-size: 10px !important; }
+
+  /* ============ ПРЕИМУЩЕСТВА ============ */
+  .advantages { background: var(--light); }
+  .adv-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  .adv-card {
+    background: var(--white); padding: 28px 20px;
+    border-radius: var(--radius); text-align: center;
+    box-shadow: var(--shadow);
+  }
+  .adv-icon { font-size: 40px; margin-bottom: 12px; }
+  .adv-card h3 { font-size: 17px; margin-bottom: 6px; }
+  .adv-card p { color: var(--gray); font-size: 14px; }
+
+  /* ============ ФОРМА ============ */
+  .contact-wrap {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    align-items: center;
+  }
+  .contact-info h2 { font-size: 28px; margin-bottom: 14px; }
+  .contact-info p { color: var(--gray); margin-bottom: 20px; }
+  .contact-list { list-style: none; }
+  .contact-list li {
+    padding: 10px 0; font-size: 15px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  form#leadForm {
+    background: var(--white); padding: 24px;
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  form#leadForm input, form#leadForm textarea, form#leadForm select {
+    padding: 14px 16px; border: 2px solid #e2e8f0;
+    border-radius: 8px; font-family: inherit; font-size: 16px;
+    min-height: 50px;
+  }
+  form#leadForm input:focus, form#leadForm textarea:focus {
+    outline: none; border-color: var(--primary);
+  }
+  form#leadForm button {
+    background: var(--primary); color: var(--white);
+    padding: 16px; border-radius: 8px;
+    font-weight: 700; font-size: 16px; min-height: 52px;
+    transition: background .2s;
+  }
+  form#leadForm button:active { background: var(--primary-dark); }
+  .form-msg {
+    display: none; padding: 12px 16px; border-radius: 8px;
+    font-size: 14px; text-align: center;
+  }
+  .form-msg.ok { display: block; background: #dcfce7; color: var(--success); }
+  .form-msg.err { display: block; background: #fee2e2; color: var(--danger); }
+
+  /* ============ МОДАЛЬНЫЕ ОКНА ============ */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(15,23,42,0.7); z-index: 1000;
+    align-items: center; justify-content: center; padding: 20px;
+    overflow-y: auto;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--white); border-radius: var(--radius);
+    max-width: 640px; width: 100%; max-height: 90vh; overflow-y: auto;
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-header {
+    background: linear-gradient(135deg, #2563eb, #1e3a8a);
+    color: var(--white); padding: 20px; position: relative;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .modal-header h3 { font-size: 19px; padding-right: 44px; }
+  .modal-close {
+    position: absolute; top: 14px; right: 14px;
+    background: rgba(255,255,255,0.2); color: var(--white);
+    width: 40px; height: 40px; border-radius: 50%;
+    font-size: 18px; transition: background .2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:active { background: rgba(255,255,255,0.4); }
+  .modal-body { padding: 20px; }
+  .modal-body .info-row {
+    display: flex; justify-content: space-between;
+    padding: 12px 0; border-bottom: 1px solid #e2e8f0;
+    gap: 12px;
+  }
+  .modal-body .info-row strong { color: var(--gray); font-weight: 500; flex-shrink: 0; }
+  .modal-body .info-row span { text-align: right; word-break: break-word; }
+  .modal-body .modal-price {
+    font-size: 26px; font-weight: 800; color: var(--primary);
+    margin-bottom: 16px;
+  }
+  .modal-body .btn-main {
+    width: 100%; margin-top: 16px;
+    background: var(--accent); color: var(--white);
+    padding: 15px; border-radius: 8px;
+    font-weight: 700; font-size: 16px; min-height: 50px;
+  }
+  .modal-body .btn-main:active { background: #d97706; }
+
+  /* ============ АВТОРИЗАЦИЯ ============ */
+  .auth-tabs {
+    display: flex; margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .auth-tab {
+    flex: 1; padding: 14px; background: none;
+    font-weight: 600; color: var(--gray); font-size: 15px;
+    border-bottom: 3px solid transparent; margin-bottom: -2px;
+    min-height: 52px;
+    transition: all .2s;
+  }
+  .auth-tab.active {
+    color: var(--primary); border-bottom-color: var(--primary);
+  }
+  .auth-form { display: flex; flex-direction: column; gap: 12px; }
+  .auth-form input {
+    padding: 14px 16px; border: 2px solid #e2e8f0;
+    border-radius: 8px; font-family: inherit; font-size: 16px;
+    min-height: 50px;
+  }
+  .auth-form input:focus {
+    outline: none; border-color: var(--primary);
+  }
+  .auth-form button[type="submit"] {
+    background: var(--primary); color: var(--white);
+    padding: 16px; border-radius: 8px;
+    font-weight: 700; font-size: 16px; margin-top: 8px; min-height: 52px;
+  }
+  .auth-form button[type="submit"]:active { background: var(--primary-dark); }
+
+  /* ============ ЛИЧНЫЙ КАБИНЕТ ============ */
+  .cabinet { display: none; background: var(--light); }
+  .cabinet.active { display: block; }
+  .cabinet-header {
+    background: linear-gradient(135deg, #1e3a8a, #2563eb);
+    color: var(--white); padding: 28px 20px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    display: flex; align-items: center; gap: 16px;
+    flex-wrap: wrap;
+  }
+  .cabinet-avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 700; flex-shrink: 0;
+  }
+  .cabinet-header h2 { font-size: 22px; margin-bottom: 2px; }
+  .cabinet-header p { opacity: .85; font-size: 13px; word-break: break-all; }
+
+  .cabinet-tabs {
+    background: var(--white); padding: 0 12px;
+    display: flex; gap: 4px;
+    border-bottom: 1px solid #e2e8f0;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .cabinet-tabs::-webkit-scrollbar { display: none; }
+  .cabinet-tab {
+    padding: 16px 16px; background: none;
+    font-weight: 600; color: var(--gray); font-size: 14px;
+    border-bottom: 3px solid transparent; margin-bottom: -1px;
+    white-space: nowrap; flex-shrink: 0;
+    min-height: 52px;
+    transition: all .2s;
+  }
+  .cabinet-tab.active {
+    color: var(--primary); border-bottom-color: var(--primary);
+  }
+  .cabinet-content {
+    background: var(--white); padding: 24px 20px;
+    border-radius: 0 0 var(--radius) var(--radius);
+    min-height: 280px;
+  }
+  .cabinet-panel { display: none; }
+  .cabinet-panel.active { display: block; }
+
+  .profile-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  .profile-item {
+    padding: 14px; background: var(--light); border-radius: 8px;
+  }
+  .profile-item label {
+    display: block; font-size: 11px; color: var(--gray);
+    text-transform: uppercase; font-weight: 600; margin-bottom: 4px;
+  }
+  .profile-item div { font-size: 15px; font-weight: 600; word-break: break-word; }
+
+  .requests-list { display: flex; flex-direction: column; gap: 12px; }
+  .request-item {
+    padding: 14px 16px; background: var(--light);
+    border-radius: 8px; display: flex;
+    justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .request-item .status {
+    padding: 5px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 700;
+  }
+  .status.new { background: #dbeafe; color: #1e40af; }
+  .status.done { background: #dcfce7; color: var(--success); }
+  .status.process { background: #fef3c7; color: #92400e; }
+
+  .empty-cabinet {
+    text-align: center; padding: 40px 20px; color: var(--gray);
+  }
+  .empty-cabinet .icon { font-size: 44px; margin-bottom: 10px; }
+
+  /* ============ ФУТЕР ============ */
+  footer {
+    background: var(--dark); color: #cbd5e1;
+    padding: 40px 20px calc(20px + var(--safe-bottom));
+  }
+  .footer-grid {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 28px;
+  }
+  .footer-grid h4 { color: var(--white); margin-bottom: 12px; font-size: 15px; }
+  .footer-grid ul { list-style: none; }
+  .footer-grid ul li { margin-bottom: 8px; font-size: 14px; }
+  .footer-grid ul a:hover { color: var(--accent); }
+  .footer-logo {
+    font-size: 22px; font-weight: 800;
+    color: var(--white); margin-bottom: 10px;
+  }
+  .footer-logo span { color: var(--accent); }
+  .footer-bottom {
+    max-width: 1200px; margin: 28px auto 0;
+    padding-top: 18px; border-top: 1px solid #334155;
+    text-align: center; font-size: 12px; color: #94a3b8;
+  }
+
+  /* ============ ПЛАНШЕТ (≤ 900px) ============ */
+  @media (max-width: 900px) {
+    .nav-links { display: none; }
+    .burger { display: flex; }
+    .btn-login, .btn-user { display: none; }
+    .search-fields { grid-template-columns: 1fr 1fr; }
+    .btn-search { grid-column: 1 / -1; }
+    .contact-wrap { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+    .profile-grid { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 34px; }
+  }
+
+  /* ============ МОБИЛЬНЫЙ (≤ 640px) ============ */
+  @media (max-width: 640px) {
+    .nav { padding: 10px 14px; }
+    .logo { font-size: 22px; }
+    .hero { padding: 50px 16px 70px; }
+    .hero h1 { font-size: 26px; line-height: 1.2; }
+    .hero p { font-size: 15px; }
+
+    .search-box { margin: -40px 14px 0; padding: 16px; border-radius: 14px; }
+    .search-tabs { margin-bottom: 14px; }
+    .tab { padding: 10px 16px; font-size: 14px; }
+    .search-fields { grid-template-columns: 1fr; gap: 10px; }
+    .field input, .field select { font-size: 16px; }
+
+    section { padding: 44px 16px; }
+    .section-title { margin-bottom: 24px; }
+    .section-title h2 { font-size: 22px; }
+    .section-title p { font-size: 14px; }
+
+    .cards { grid-template-columns: 1fr; gap: 16px; }
+    .card-img { height: 180px; }
+    .card:hover { transform: none; }
+
+    .map-wrap { height: 380px; }
+    .map-hint { font-size: 11px; padding: 8px 12px; }
+
+    .adv-grid { grid-template-columns: 1fr; gap: 14px; }
+    .adv-card { padding: 22px 18px; }
+
+    .contact-wrap { gap: 24px; }
+    .contact-info h2 { font-size: 22px; }
+    form#leadForm { padding: 20px 16px; }
+
+    .footer-grid { grid-template-columns: 1fr; gap: 24px; text-align: center; }
+
+    /* Модалка снизу — bottom-sheet */
+    .modal-overlay {
+      align-items: flex-end; padding: 0;
+    }
+    .modal {
+      max-width: 100%; max-height: 92vh;
+      border-radius: 20px 20px 0 0;
+      animation: slideUpMobile .3s ease;
+      padding-bottom: var(--safe-bottom);
+    }
+    @keyframes slideUpMobile {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal::before {
+      content: ''; display: block;
+      width: 40px; height: 4px;
+      background: #cbd5e1; border-radius: 2px;
+      margin: 8px auto 0;
+    }
+
+    .modal-body { padding: 18px 16px; }
+    .modal-body .modal-price { font-size: 22px; }
+    .modal-body .info-row { font-size: 14px; }
+
+    /* Кабинет */
+    .cabinet-header { padding: 24px 16px; }
+    .cabinet-avatar { width: 56px; height: 56px; font-size: 22px; }
+    .cabinet-header h2 { font-size: 19px; }
+    .cabinet-content { padding: 20px 16px; }
+    .cabinet-tab { padding: 14px 12px; font-size: 13px; }
+  }
+
+  /* ============ ОЧЕНЬ УЗКИЙ (≤ 380px) ============ */
+  @media (max-width: 380px) {
+    .hero h1 { font-size: 22px; }
+    .logo { font-size: 20px; }
+    .mobile-menu { width: 90%; }
+  }
+
+  /* ============ ОТКЛЮЧЕНИЕ HOVER НА ТАЧ-УСТРОЙСТВАХ ============ */
+  @media (hover: none) {
+    .card:hover { transform: none; box-shadow: var(--shadow); }
+    .btn-search:hover,
+    .btn-login:hover,
+    form#leadForm button:hover { background: var(--primary); }
+    .adv-card:active { transform: scale(0.98); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= ШАПКА ================= -->
+<header>
+  <nav class="nav">
+    <div class="logo">Куплю<span>.</span></div>
+    <div class="nav-links">
+      <a href="#catalog">Каталог</a>
+      <a href="#map-section">Карта</a>
+      <a href="#advantages">О нас</a>
+      <a href="#contact">Контакты</a>
+    </div>
+    <div class="nav-actions" id="navActions"></div>
+    <button class="burger" id="burgerBtn" aria-label="Открыть меню">☰</button>
+  </nav>
+</header>
+
+<!-- ================= МОБИЛЬНОЕ МЕНЮ ================= -->
+<div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+<aside class="mobile-menu" id="mobileMenu">
+  <div class="mobile-menu-header">
+    <div class="logo">Куплю<span>.</span></div>
+    <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть меню">✕</button>
+  </div>
+  <nav>
+    <a href="#catalog" data-close-menu>🏠 Каталог</a>
+    <a href="#map-section" data-close-menu>🗺️ Карта</a>
+    <a href="#advantages" data-close-menu>⭐ О нас</a>
+    <a href="#contact" data-close-menu>✉️ Контакты</a>
+  </nav>
+  <div class="mobile-menu-footer" id="mobileMenuFooter"></div>
+</aside>
+
+<!-- ================= HERO ================= -->
+<section class="hero">
+  <h1>Найдите недвижимость мечты в «Куплю»</h1>
+  <p>Более 2000 проверенных объектов: квартиры, дома, коммерческая недвижимость. Работаем с 2010 года.</p>
+</section>
+
+<!-- ================= ПОИСК ================= -->
+<div class="search-box">
+  <div class="search-tabs">
+    <button class="tab active" data-type="all">Все</button>
+    <button class="tab" data-type="Квартира">Квартиры</button>
+    <button class="tab" data-type="Дом">Дома</button>
+    <button class="tab" data-type="Коммерческая">Коммерческая</button>
+  </div>
+  <div class="search-fields">
+    <div class="field">
+      <label>Поиск по названию</label>
+      <input type="text" id="searchText" placeholder="Например: Центр" inputmode="search">
+    </div>
+    <div class="field">
+      <label>Тип сделки</label>
+      <select id="searchDeal">
+        <option value="all">Любая</option>
+        <option value="Продажа">Продажа</option>
+        <option value="Аренда">Аренда</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Цена от</label>
+      <input type="number" id="priceMin" placeholder="0" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>Цена до</label>
+      <input type="number" id="priceMax" placeholder="100000000" inputmode="numeric">
+    </div>
+    <button class="btn-search" onclick="applySearch()">Найти</button>
+  </div>
+</div>
+
+<!-- ================= КАТАЛОГ ================= -->
+<section id="catalog">
+  <div class="container">
+    <div class="section-title">
+      <h2>Каталог объектов</h2>
+      <p>Актуальные предложения от агентства «Куплю»</p>
+    </div>
+    <div class="catalog-controls">
+      <span class="results-count" id="resultsCount">Найдено: 0 объектов</span>
+      <select class="sort-select" id="sortSelect" onchange="applySearch()">
+        <option value="default">По умолчанию</option>
+        <option value="price-asc">Цена ↑</option>
+        <option value="price-desc">Цена ↓</option>
+        <option value="area-desc">Площадь ↓</option>
+      </select>
+    </div>
+    <div class="cards" id="cardsContainer"></div>
+  </div>
+</section>
+
+<!-- ================= КАРТА ================= -->
+<section id="map-section" class="map-section">
+  <div class="container">
+    <div class="section-title">
+      <h2>Объекты на карте</h2>
+      <p>Нажмите на метку, чтобы увидеть подробности</p>
+    </div>
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="map-hint">💡 Кликните по маркеру для просмотра объекта</div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ЛИЧНЫЙ КАБИНЕТ ================= -->
+<section id="cabinet" class="cabinet">
+  <div class="container">
+    <div class="cabinet-header">
+      <div class="cabinet-avatar" id="cabinetAvatar">?</div>
+      <div>
+        <h2 id="cabinetName">Пользователь</h2>
+        <p id="cabinetEmail">email@example.com</p>
+      </div>
+    </div>
+    <div class="cabinet-tabs">
+      <button class="cabinet-tab active" data-panel="profile">👤 Профиль</button>
+      <button class="cabinet-tab" data-panel="favorites">❤️ Избранное</button>
+      <button class="cabinet-tab" data-panel="requests">📋 Мои заявки</button>
+    </div>
+    <div class="cabinet-content">
+      <div class="cabinet-panel active" id="panel-profile">
+        <div class="profile-grid">
+          <div class="profile-item"><label>Имя</label><div id="profName">—</div></div>
+          <div class="profile-item"><label>Email</label><div id="profEmail">—</div></div>
+          <div class="profile-item"><label>Телефон</label><div id="profPhone">—</div></div>
+          <div class="profile-item"><label>Дата регистрации</label><div id="profDate">—</div></div>
+        </div>
+      </div>
+      <div class="cabinet-panel" id="panel-favorites">
+        <div class="cards" id="favoritesContainer"></div>
+      </div>
+      <div class="cabinet-panel" id="panel-requests">
+        <div class="requests-list" id="requestsList"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ПРЕИМУЩЕСТВА ================= -->
+<section class="advantages" id="advantages">
+  <div class="container">
+    <div class="section-title">
+      <h2>Почему выбирают «Куплю»</h2>
+      <p>Наши преимущества на рынке недвижимости</p>
+    </div>
+    <div class="adv-grid">
+      <div class="adv-card"><div class="adv-icon">🏆</div><h3>15 лет опыта</h3><p>Работаем с 2010 года и знаем рынок недвижимости изнутри.</p></div>
+      <div class="adv-card"><div class="adv-icon">🔍</div><h3>Проверенные объекты</h3><p>Каждый объект проходит юридическую проверку перед публикацией.</p></div>
+      <div class="adv-card"><div class="adv-icon">⚡</div><h3>Быстрые сделки</h3><p>Средний срок оформления сделки — 7 дней.</p></div>
+      <div class="adv-card"><div class="adv-icon">💼</div><h3>Персональный агент</h3><p>За каждым клиентом закрепляется личный менеджер.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ФОРМА ЗАЯВКИ ================= -->
+<section id="contact">
+  <div class="container">
+    <div class="contact-wrap">
+      <div class="contact-info">
+        <h2>Оставьте заявку</h2>
+        <p>Наш агент свяжется с вами в течение 15 минут и подберёт подходящие варианты.</p>
+        <ul class="contact-list">
+          <li>📞 +7 (999) 123-45-67</li>
+          <li>✉️ info@kuplu.ru</li>
+          <li>📍 г. Москва, ул. Тверская, 1</li>
+          <li>🕒 Пн–Вс: 9:00 – 21:00</li>
+        </ul>
+      </div>
+      <form id="leadForm" novalidate>
+        <input type="text" id="leadName" placeholder="Ваше имя *" required autocomplete="name">
+        <input type="tel" id="leadPhone" placeholder="Телефон *" required autocomplete="tel" inputmode="tel">
+        <input type="email" id="leadEmail" placeholder="Email" autocomplete="email" inputmode="email">
+        <textarea id="leadMsg" rows="3" placeholder="Комментарий (что ищете?)"></textarea>
+        <button type="submit">Отправить заявку</button>
+        <div class="form-msg" id="formMsg"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ФУТЕР ================= -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <div class="footer-logo">Куплю<span>.</span></div>
+      <p style="font-size:14px;">Агентство недвижимости «Куплю» — помогаем покупать, продавать и арендовать недвижимость с 2010 года.</p>
+    </div>
+    <div>
+      <h4>Компания</h4>
+      <ul>
+        <li><a href="#advantages">О нас</a></li>
+        <li><a href="#catalog">Каталог</a></li>
+        <li><a href="#map-section">Карта</a></li>
+        <li><a href="#contact">Контакты</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Услуги</h4>
+      <ul>
+        <li>Покупка квартир</li>
+        <li>Продажа недвижимости</li>
+        <li>Аренда жилья</li>
+        <li>Коммерческая недвижимость</li>
+      </ul>
+    </div>
+    <div>
+      <h4>Контакты</h4>
+      <ul>
+        <li>+7 (999) 123-45-67</li>
+        <li>info@kuplu.ru</li>
+        <li>Москва, Тверская, 1</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    © 2025 Агентство недвижимости «Куплю». Все права защищены.
+  </div>
+</footer>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: ОБЪЕКТ ================= -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">Объект</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ================= МОДАЛЬНОЕ ОКНО: АВТОРИЗАЦИЯ ================= -->
+<div class="modal-overlay" id="authOverlay">
+  <div class="modal" style="max-width: 460px;">
+    <div class="modal-header">
+      <h3 id="authTitle">Вход в личный кабинет</h3>
+      <button class="modal-close" onclick="closeAuth()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-form="login">Вход</button>
+        <button class="auth-tab" data-form="register">Регистрация</button>
+      </div>
+      <form class="auth-form" id="loginForm">
+        <input type="email" id="loginEmail" placeholder="Email" required autocomplete="email">
+        <input type="password" id="loginPass" placeholder="Пароль" required autocomplete="current-password">
+        <button type="submit">Войти</button>
+        <div class="form-msg" id="loginMsg"></div>
+      </form>
+      <form class="auth-form" id="registerForm" style="display:none;">
+        <input type="text" id="regName" placeholder="Имя *" required autocomplete="name">
+        <input type="email" id="regEmail" placeholder="Email *" required autocomplete="email">
+        <input type="tel" id="regPhone" placeholder="Телефон" autocomplete="tel" inputmode="tel">
+        <input type="password" id="regPass" placeholder="Пароль (мин. 4 символа) *" required autocomplete="new-password">
+        <input type="password" id="regPass2" placeholder="Повторите пароль *" required autocomplete="new-password">
+        <button type="submit">Зарегистрироваться</button>
+        <div class="form-msg" id="registerMsg"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   ДАННЫЕ
+   ===================================================================== */
+const properties = [
+  { id: 1, title: '2-комн. квартира в центре', type: 'Квартира', deal: 'Продажа',
+    price: 8500000, area: 62, rooms: 2, floor: 5,
+    address: 'г. Москва, ул. Тверская, 12', icon: '🏢', badge: 'Хит',
+    lat: 55.7649, lng: 37.6055 },
+  { id: 2, title: 'Просторный загородный дом', type: 'Дом', deal: 'Продажа',
+    price: 24500000, area: 180, rooms: 5, floor: 2,
+    address: 'МО, д. Раздоры, ул. Лесная, 3', icon: '🏡', badge: 'Новинка',
+    lat: 55.7613, lng: 37.3239 },
+  { id: 3, title: '3-комн. квартира бизнес-класса', type: 'Квартира', deal: 'Аренда',
+    price: 90000, area: 85, rooms: 3, floor: 12,
+    address: 'г. Москва, Пресненская наб., 8', icon: '🌆', badge: '',
+    lat: 55.7497, lng: 37.5399 },
+  { id: 4, title: 'Офис в бизнес-центре', type: 'Коммерческая', deal: 'Аренда',
+    price: 150000, area: 120, rooms: 4, floor: 7,
+    address: 'г. Москва, ул. Складочная, 1с18', icon: '🏬', badge: '',
+    lat: 55.7969, lng: 37.5889 },
+  { id: 5, title: 'Студия у метро', type: 'Квартира', deal: 'Продажа',
+    price: 5200000, area: 32, rooms: 1, floor: 3,
+    address: 'г. Москва, ул. Гиляровского, 4', icon: '🏢', badge: 'Скидка',
+    lat: 55.7719, lng: 37.6103 },
+  { id: 6, title: 'Дом с участком 10 соток', type: 'Дом', deal: 'Продажа',
+    price: 18700000, area: 145, rooms: 4, floor: 2,
+    address: 'МО, Истринский р-н, КП «Лесной»', icon: '🏘️', badge: '',
+    lat: 55.9142, lng: 36.8606 },
+  { id: 7, title: '4-комн. квартира с видом', type: 'Квартира', deal: 'Продажа',
+    price: 32000000, area: 140, rooms: 4, floor: 18,
+    address: 'г. Москва, Ленинский пр-т, 30', icon: '🌇', badge: 'VIP',
+    lat: 55.7014, lng: 37.5860 },
+  { id: 8, title: 'Помещение под магазин', type: 'Коммерческая', deal: 'Аренда',
+    price: 220000, area: 95, rooms: 2, floor: 1,
+    address: 'г. Москва, ул. Арбат, 15', icon: '🏪', badge: '',
+    lat: 55.7507, lng: 37.5939 }
+];
+
+/* =====================================================================
+   ХРАНИЛИЩЕ
+   ===================================================================== */
+const STORAGE = {
+  users: 'kuplu_users', currentUser: 'kuplu_current',
+  favorites: 'kuplu_favorites', requests: 'kuplu_requests'
+};
+function getUsers() { return JSON.parse(localStorage.getItem(STORAGE.users) || '[]'); }
+function saveUsers(u) { localStorage.setItem(STORAGE.users, JSON.stringify(u)); }
+function getCurrentUser() { return JSON.parse(localStorage.getItem(STORAGE.currentUser) || 'null'); }
+function setCurrentUser(u) {
+  if (u) localStorage.setItem(STORAGE.currentUser, JSON.stringify(u));
+  else localStorage.removeItem(STORAGE.currentUser);
+  renderNav();
+  renderMobileMenuFooter();
+}
+function getFavorites() {
+  const user = getCurrentUser(); if (!user) return [];
+  const all = JSON.parse(localStorage.getItem(STORAGE.favorites) || '{}');
+  return all[user.email] || [];
+}
+function saveFavorites(ids) {
+  const user = getCurrentUser(); if (!user) return;
+  const all = JSON.parse(localStorage.getItem(STORAGE.favorites) || '{}');
+  all[user.email] = ids; localStorage.setItem(STORAGE.favorites, JSON.stringify(all));
+}
+function getRequests() {
+  const user = getCurrentUser(); if (!user) return [];
+  const all = JSON.parse(localStorage.getItem(STORAGE.requests) || '{}');
+  return all[user.email] || [];
+}
+function saveRequests(list) {
+  const user = getCurrentUser(); if (!user) return;
+  const all = JSON.parse(localStorage.getItem(STORAGE.requests) || '{}');
+  all[user.email] = list; localStorage.setItem(STORAGE.requests, JSON.stringify(all));
+}
+
+/* =====================================================================
+   ШАПКА
+   ===================================================================== */
+function renderNav() {
+  const user = getCurrentUser();
+  const nav = document.getElementById('navActions');
+  if (!user) {
+    nav.innerHTML = `<button class="btn-login" onclick="openAuth()">Войти</button>`;
+  } else {
+    const initial = user.name.charAt(0).toUpperCase();
+    nav.innerHTML = `
+      <button class="btn-user" onclick="openCabinet()">
+        <div class="user-avatar">${initial}</div>
+        <span class="user-name">${user.name}</span>
+      </button>
+      <button class="btn-logout" title="Выйти" onclick="logout()">⎋</button>
+    `;
+  }
+}
+
+/* Мобильное меню — нижний блок */
+function renderMobileMenuFooter() {
+  const user = getCurrentUser();
+  const footer = document.getElementById('mobileMenuFooter');
+  if (!user) {
+    footer.innerHTML = `<button class="btn-login" onclick="closeMobileMenu();openAuth()">Войти</button>`;
+  } else {
+    footer.innerHTML = `
+      <button class="btn-user" onclick="closeMobileMenu();openCabinet()">
+        <div class="user-avatar">${user.name.charAt(0).toUpperCase()}</div>
+        <span>Личный кабинет</span>
+      </button>
+      <button class="btn-logout-mobile" onclick="closeMobileMenu();logout()">⎋ Выйти</button>
+    `;
+  }
+}
+
+/* =====================================================================
+   МОБИЛЬНОЕ МЕНЮ — логика
+   ===================================================================== */
+const burgerBtn = document.getElementById('burgerBtn');
+const mobileMenu = document.getElementById('mobileMenu');
+const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+function openMobileMenu() {
+  mobileMenu.classList.add('open');
+  mobileMenuOverlay.style.display = 'block';
+  requestAnimationFrame(() => mobileMenuOverlay.classList.add('active'));
+  document.body.classList.add('no-scroll');
+}
+function closeMobileMenu() {
+  mobileMenu.classList.remove('open');
+  mobileMenuOverlay.classList.remove('active');
+  setTimeout(() => {
+    if (!mobileMenuOverlay.classList.contains('active')) {
+      mobileMenuOverlay.style.display = 'none';
+    }
+  }, 250);
+  document.body.classList.remove('no-scroll');
+}
+
+burgerBtn.addEventListener('click', openMobileMenu);
+mobileMenuClose.addEventListener('click', closeMobileMenu);
+mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+
+// Закрытие по клику на ссылку
+document.querySelectorAll('[data-close-menu]').forEach(link => {
+  link.addEventListener('click', () => {
+    closeMobileMenu();
+    // Плавный скролл к секции
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) {
+      setTimeout(() => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 250);
+    }
+  });
+});
+
+// Закрытие по Esc
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (mobileMenu.classList.contains('open')) closeMobileMenu();
+  }
+});
+
+/* =====================================================================
+   АВТОРИЗАЦИЯ
+   ===================================================================== */
+function openAuth() { document.getElementById('authOverlay').classList.add('active'); }
+function closeAuth() {
+  document.getElementById('authOverlay').classList.remove('active');
+  document.querySelectorAll('#loginMsg, #registerMsg').forEach(m => m.className = 'form-msg');
+}
+document.getElementById('authOverlay').addEventListener('click', e => {
+  if (e.target.id === 'authOverlay') closeAuth();
+});
+
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const form = tab.dataset.form;
+    document.getElementById('loginForm').style.display = form === 'login' ? 'flex' : 'none';
+    document.getElementById('registerForm').style.display = form === 'register' ? 'flex' : 'none';
+    document.getElementById('authTitle').textContent =
+      form === 'login' ? 'Вход в личный кабинет' : 'Регистрация в «Куплю»';
+  });
+});
+
+document.getElementById('registerForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim().toLowerCase();
+  const phone = document.getElementById('regPhone').value.trim();
+  const pass = document.getElementById('regPass').value;
+  const pass2 = document.getElementById('regPass2').value;
+  const msg = document.getElementById('registerMsg');
+
+  if (name.length < 2) return authMsg(msg, 'Введите имя (мин. 2 символа)', 'err');
+  if (!/^\S+@\S+\.\S+$/.test(email)) return authMsg(msg, 'Некорректный email', 'err');
+  if (pass.length < 4) return authMsg(msg, 'Пароль минимум 4 символа', 'err');
+  if (pass !== pass2) return authMsg(msg, 'Пароли не совпадают', 'err');
+
+  const users = getUsers();
+  if (users.some(u => u.email === email))
+    return authMsg(msg, 'Пользователь с таким email уже существует', 'err');
+
+  const newUser = { name, email, phone: phone || '—', pass,
+    registered: new Date().toLocaleDateString('ru-RU') };
+  users.push(newUser); saveUsers(users);
+  setCurrentUser({ name, email, phone: newUser.phone, registered: newUser.registered });
+  authMsg(msg, '✅ Регистрация успешна!', 'ok');
+  setTimeout(() => { closeAuth(); openCabinet(); }, 800);
+});
+
+document.getElementById('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pass = document.getElementById('loginPass').value;
+  const msg = document.getElementById('loginMsg');
+  const user = getUsers().find(u => u.email === email && u.pass === pass);
+  if (!user) return authMsg(msg, 'Неверный email или пароль', 'err');
+  setCurrentUser({ name: user.name, email: user.email, phone: user.phone, registered: user.registered });
+  authMsg(msg, '✅ Вход выполнен!', 'ok');
+  setTimeout(() => { closeAuth(); openCabinet(); }, 600);
+});
+
+function authMsg(el, text, type) { el.textContent = text; el.className = 'form-msg ' + type; }
+function logout() {
+  setCurrentUser(null);
+  document.getElementById('cabinet').classList.remove('active');
+  document.getElementById('catalog').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* =====================================================================
+   ЛИЧНЫЙ КАБИНЕТ
+   ===================================================================== */
+function openCabinet() {
+  const user = getCurrentUser();
+  if (!user) return openAuth();
+  document.getElementById('cabinetAvatar').textContent = user.name.charAt(0).toUpperCase();
+  document.getElementById('cabinetName').textContent = user.name;
+  document.getElementById('cabinetEmail').textContent = user.email;
+  document.getElementById('profName').textContent = user.name;
+  document.getElementById('profEmail').textContent = user.email;
+  document.getElementById('profPhone').textContent = user.phone || '—';
+  document.getElementById('profDate').textContent = user.registered || '—';
+  renderFavorites();
+  renderRequests();
+  document.getElementById('cabinet').classList.add('active');
+  setTimeout(() => document.getElementById('cabinet').scrollIntoView({ behavior: 'smooth' }), 100);
+}
+
+document.querySelectorAll('.cabinet-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.cabinet-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.cabinet-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+  });
+});
+
+function renderFavorites() {
+  const container = document.getElementById('favoritesContainer');
+  const favs = getFavorites();
+  if (favs.length === 0) {
+    container.innerHTML = `<div class="empty-cabinet"><div class="icon">❤️</div>
+      <p>Пока нет избранных объектов.<br>Нажмите на сердечко в карточке, чтобы добавить.</p></div>`;
+    return;
+  }
+  container.innerHTML = properties.filter(p => favs.includes(p.id)).map(cardHTML).join('');
+}
+
+function renderRequests() {
+  const container = document.getElementById('requestsList');
+  const list = getRequests();
+  if (list.length === 0) {
+    container.innerHTML = `<div class="empty-cabinet"><div class="icon">📋</div>
+      <p>У вас пока нет заявок.</p></div>`;
+    return;
+  }
+  container.innerHTML = list.slice().reverse().map(r => `
+    <div class="request-item">
+      <div>
+        <div style="font-weight:600;">${r.property || 'Общая заявка'}</div>
+        <div style="font-size:13px;color:var(--gray);">${r.name} · ${r.phone} · ${r.date}</div>
+      </div>
+      <span class="status ${r.status === 'Новая' ? 'new' : 'process'}">${r.status}</span>
+    </div>`).join('');
+}
+
+/* =====================================================================
+   КАТАЛОГ
+   ===================================================================== */
+let currentFilter = { type: 'all', text: '', deal: 'all', priceMin: 0, priceMax: Infinity };
+
+function formatPrice(p, deal) {
+  const s = p.toLocaleString('ru-RU') + ' ₽';
+  return deal === 'Аренда' ? s + '/мес' : s;
+}
+
+function cardHTML(p) {
+  const isFav = getFavorites().includes(p.id);
+  return `
+    <div class="card">
+      <div class="card-img" onclick="openModal(${p.id})">
+        ${p.badge ? `<span class="badge">${p.badge}</span>` : ''}
+        <button class="fav-btn ${isFav ? 'active' : ''}"
+                onclick="event.stopPropagation(); toggleFavorite(${p.id})"
+                aria-label="Избранное">${isFav ? '❤️' : '🤍'}</button>
+        ${p.icon}
+      </div>
+      <div class="card-body">
+        <div class="card-price">${formatPrice(p.price, p.deal)}</div>
+        <div class="card-title">${p.title}</div>
+        <div class="card-address">📍 ${p.address}</div>
+        <div class="card-features">
+          <span>📐 ${p.area} м²</span>
+          <span>🚪 ${p.rooms} комн.</span>
+          <span>🏢 ${p.floor} эт.</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderCards(list) {
+  const container = document.getElementById('cardsContainer');
+  document.getElementById('resultsCount').textContent = `Найдено: ${list.length} объектов`;
+  if (list.length === 0) {
+    container.innerHTML = `<div class="empty-state"><h3>😔 Ничего не найдено</h3>
+      <p>Попробуйте изменить параметры поиска</p></div>`;
+    return;
+  }
+  container.innerHTML = list.map(cardHTML).join('');
+}
+
+function toggleFavorite(id) {
+  const user = getCurrentUser();
+  if (!user) return openAuth();
+  let favs = getFavorites();
+  if (favs.includes(id)) favs = favs.filter(x => x !== id);
+  else favs.push(id);
+  saveFavorites(favs);
+  applySearch();
+  if (document.getElementById('cabinet').classList.contains('active')) renderFavorites();
+}
+
+/* =====================================================================
+   ФИЛЬТРАЦИЯ
+   ===================================================================== */
+function applySearch() {
+  currentFilter.type = document.querySelector('.tab.active').dataset.type;
+  currentFilter.text = document.getElementById('searchText').value.trim().toLowerCase();
+  currentFilter.deal = document.getElementById('searchDeal').value;
+  currentFilter.priceMin = parseInt(document.getElementById('priceMin').value) || 0;
+  currentFilter.priceMax = parseInt(document.getElementById('priceMax').value) || Infinity;
+
+  let result = properties.filter(p => {
+    if (currentFilter.type !== 'all' && p.type !== currentFilter.type) return false;
+    if (currentFilter.deal !== 'all' && p.deal !== currentFilter.deal) return false;
+    if (p.price < currentFilter.priceMin) return false;
+    if (p.price > currentFilter.priceMax) return false;
+    if (currentFilter.text) {
+      const hay = (p.title + ' ' + p.address).toLowerCase();
+      if (!hay.includes(currentFilter.text)) return false;
+    }
+    return true;
+  });
+
+  const sort = document.getElementById('sortSelect').value;
+  if (sort === 'price-asc') result.sort((a,b) => a.price - b.price);
+  if (sort === 'price-desc') result.sort((a,b) => b.price - a.price);
+  if (sort === 'area-desc') result.sort((a,b) => b.area - a.area);
+
+  renderCards(result);
+  updateMapMarkers(result);
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    applySearch();
+  });
+});
+document.getElementById('searchText').addEventListener('keypress', e => {
+  if (e.key === 'Enter') { e.target.blur(); applySearch(); }
+});
+
+/* =====================================================================
+   МОДАЛКА ОБЪЕКТА
+   ===================================================================== */
+function openModal(id) {
+  const p = properties.find(x => x.id === id); if (!p) return;
+  const isFav = getFavorites().includes(p.id);
+  document.getElementById('modalTitle').textContent = p.title;
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-price">${formatPrice(p.price, p.deal)}</div>
+    <div class="info-row"><strong>Тип</strong><span>${p.type}</span></div>
+    <div class="info-row"><strong>Сделка</strong><span>${p.deal}</span></div>
+    <div class="info-row"><strong>Адрес</strong><span>${p.address}</span></div>
+    <div class="info-row"><strong>Площадь</strong><span>${p.area} м²</span></div>
+    <div class="info-row"><strong>Комнат</strong><span>${p.rooms}</span></div>
+    <div class="info-row"><strong>Этаж</strong><span>${p.floor}</span></div>
+    <button class="btn-main" onclick="requestProperty(${p.id})">Оставить заявку на объект</button>
+    <button class="btn-main" style="background:${isFav ? 'var(--danger)' : 'var(--primary)'};margin-top:10px;"
+            onclick="toggleFavorite(${p.id}); closeModal(); openModal(${p.id});">
+      ${isFav ? '❤️ Убрать из избранного' : '🤍 Добавить в избранное'}
+    </button>`;
+  document.getElementById('modalOverlay').classList.add('active');
+  document.body.classList.add('no-scroll');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+  document.body.classList.remove('no-scroll');
+}
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target.id === 'modalOverlay') closeModal();
+});
+function requestProperty(id) {
+  closeModal();
+  const p = properties.find(x => x.id === id);
+  document.getElementById('leadMsg').value = `Интересует объект: ${p.title} (${p.address})`;
+  document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* =====================================================================
+   КАРТА
+   ===================================================================== */
+let map, markersLayer;
+
+function initMap() {
+  map = L.map('map', { zoomControl: true, attributionControl: true })
+          .setView([55.7558, 37.6173], 10);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19
+  }).addTo(map);
+
+  // На мобильных переносим zoom-контрол в правый нижний угол
+  if (window.innerWidth < 640) {
+    map.zoomControl.setPosition('bottomright');
+  }
+
+  markersLayer = L.layerGroup().addTo(map);
+  updateMapMarkers(properties);
+}
+
+function updateMapMarkers(list) {
+  if (!markersLayer) return;
+  markersLayer.clearLayers();
+  list.forEach(p => {
+    const icon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="background:#2563eb;color:#fff;width:36px;height:36px;
+        border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;
+        align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,.4);
+        border:3px solid #fff;"><span style="transform:rotate(45deg);font-size:16px;">${p.icon}</span></div>`,
+      iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -36]
+    });
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(markersLayer);
+    marker.bindPopup(`
+      <div style="min-width:200px;font-family:'Segoe UI',sans-serif;">
+        <div style="font-size:16px;font-weight:800;color:#2563eb;margin-bottom:4px;">${formatPrice(p.price, p.deal)}</div>
+        <div style="font-weight:600;margin-bottom:6px;font-size:14px;">${p.title}</div>
+        <div style="font-size:12px;color:#64748b;margin-bottom:10px;">📍 ${p.address}</div>
+        <button onclick="openModal(${p.id})" style="width:100%;background:#2563eb;color:#fff;
+          padding:10px;border-radius:6px;font-weight:600;border:none;cursor:pointer;
+          font-size:14px;">Подробнее</button>
+      </div>`);
+  });
+}
+
+/* =====================================================================
+   ФОРМА ЗАЯВКИ
+   ===================================================================== */
+document.getElementById('leadForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = document.getElementById('leadName').value.trim();
+  const phone = document.getElementById('leadPhone').value.trim();
+  const email = document.getElementById('leadEmail').value.trim();
+  const property = document.getElementById('leadMsg').value.trim();
+  const msgEl = document.getElementById('formMsg');
+
+  if (name.length < 2) return showMsg('Введите имя (минимум 2 символа)', 'err');
+  if (!/^[\d\s\+\-\(\)]{10,}$/.test(phone)) return showMsg('Введите корректный телефон', 'err');
+
+  const user = getCurrentUser();
+  if (user) {
+    const list = getRequests();
+    list.push({ name, phone, email, property: property || 'Общая заявка',
+      status: 'Новая', date: new Date().toLocaleString('ru-RU') });
+    saveRequests(list); renderRequests();
+  }
+
+  showMsg('✅ Заявка отправлена! Агент свяжется с вами в течение 15 минут.', 'ok');
+  e.target.reset();
+  setTimeout(() => msgEl.style.display = 'none', 6000);
+});
+function showMsg(text, type) {
+  const el = document.getElementById('formMsg');
+  el.textContent = text; el.className = 'form-msg ' + type;
+}
+
+/* =====================================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ===================================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+  renderNav();
+  renderMobileMenuFooter();
+  applySearch();
+  initMap();
+});
+
+// Обновление карты при повороте телефона
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => map && map.invalidateSize(), 300);
+});
+</script>
+</body>
+</html>
